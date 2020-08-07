@@ -81,7 +81,7 @@ class NN_Matching:
         parser.add_argument('--match_threshold', type=float, default=0.1, help='SuperGlue match threshold')
         parser.add_argument('--viz', type=bool, default=True, help='Use faster image visualization with OpenCV instead of Matplotlib')
         parser.add_argument('--viz_extension', type=str, default='png', choices=['png', 'pdf'], help='Visualization file extension. Use pdf for highest-quality.')
-        parser.add_argument('--force_cpu', default=True, help='Force pytorch to run in CPU mode.')
+        parser.add_argument('--force_cpu', default=False, help='Force pytorch to run in CPU mode.')
         # V-T&R parameters
         parser.add_argument('--maxVerticalDifference', type=int, default=10)
         parser.add_argument('--numBins', type=int, default=41)
@@ -153,13 +153,17 @@ class NN_Matching:
         timer.update('matcher')
 
         # Keep the matching keypoints.
+        #print(matches)
+        #print(matches.shape)
+        #print(mkpts0.shape())
+        #print(mkpt10.shape())
         valid = matches > -1
         mkpts0 = kpts0[valid]
         mkpts1 = kpts1[matches[valid]]
         mconf = conf[valid]
 
-        differences, _ = self.building_histogram(kpts0, kpts1)
-        print(differences)
+        differences, _ = self.building_histogram(mkpts0, mkpts1)
+        # print(differences)
 
         if self.args.viz:
             # Visualize the matches.
@@ -178,7 +182,7 @@ class NN_Matching:
                 'Match Threshold: {:.2f}'.format(m_thresh),
             ]
 
-            is_saving = True
+            is_saving = False
             visualization_image = make_matching_plot(
                 image0, image1, kpts0, kpts1, mkpts0, mkpts1, color,
                 text, './current.png', True, True, False, 'Matches', small_text, is_saving)
