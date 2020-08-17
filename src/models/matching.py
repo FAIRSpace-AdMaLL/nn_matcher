@@ -42,18 +42,20 @@
 
 import torch
 
-from .superpoint import SuperPoint
+from .superDarkPoint import SuperPoint
 from .superglue import SuperGlue
 
 
 class Matching(torch.nn.Module):
     """ Image Matching Frontend (SuperPoint + SuperGlue) """
-    def __init__(self, config={}):
+    def __init__(self, config={}, destcriptor_only=False):
         super().__init__()
         self.superpoint = SuperPoint(config.get('superpoint', {}))
-        print("superpoint is loaded")
-        self.superglue = SuperGlue(config.get('superglue', {}))
-        print("superglue is loaded")
+
+        if destcriptor_only is not True:
+            self.superglue = SuperGlue(config.get('superglue', {}))
+
+        self.descriptor_only = destcriptor_only
 
     def forward(self, data):
         """ Run SuperPoint (optionally) and SuperGlue
@@ -80,7 +82,11 @@ class Matching(torch.nn.Module):
             if isinstance(data[k], (list, tuple)):
                 data[k] = torch.stack(data[k])
 
-        # Perform the matching
-        pred = {**pred, **self.superglue(data)}
+        if self.descriptor_only is True:
+            return data
 
-        return pred
+        else:
+            # Perform the matching
+            pred = {**pred, **self.superglue(data)}
+
+            return pred
