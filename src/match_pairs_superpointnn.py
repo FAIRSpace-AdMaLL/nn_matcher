@@ -51,9 +51,11 @@ import numpy as np
 import matplotlib.cm as cm
 import torch
 import sys
-import cv2
 
-#sys.path.remove('/opt/ros/kinetic/lib/python2.7/dist-packages')
+
+sys.path.remove('/opt/ros/kinetic/lib/python2.7/dist-packages')
+
+import cv2
 
 
 from models.matching import Matching
@@ -64,6 +66,8 @@ from models.utils import (compute_pose_error, compute_epipolar_error,
                           scale_intrinsics)
 
 torch.set_grad_enabled(False)
+
+
 
 
 if __name__ == '__main__':
@@ -81,19 +85,20 @@ if __name__ == '__main__':
         '--output_dir', type=str, default='dump_match_pairs/',
         help='Path to the directory in which the .npz results and optionally,'
              'the visualization images are written')
-
     parser.add_argument(
         '--max_length', type=int, default=-1,
         help='Maximum number of pairs to evaluate')
     parser.add_argument(
-        '--resize', type=int, nargs='+', default=[1024, 384],
+        '--resize', type=int, nargs='+', default=[512, 386],
         help='Resize the input image before running inference. If two numbers, '
              'resize to the exact dimensions, if one number, resize the max '
              'dimension, if -1, do not resize')
     parser.add_argument(
         '--resize_float', action='store_true',
         help='Resize the image after casting uint8 to float')
-
+    parser.add_argument(
+        '--superpoint', choices={'official', 'dark'}, default='dark',
+        help='SuperPoint weights')
     parser.add_argument(
         '--superglue', choices={'indoor', 'outdoor'}, default='outdoor',
         help='SuperGlue weights')
@@ -126,7 +131,7 @@ if __name__ == '__main__':
         '--fast_viz', type=bool, default=True, #action='store_true',
         help='Use faster image visualization with OpenCV instead of Matplotlib')
     parser.add_argument(
-        '--cache', action='store_true',
+        '--cache', type=bool, default=False, #action='store_true',
         help='Skip the pair if output .npz files are already found')
     parser.add_argument(
         '--show_keypoints', action='store_true',
@@ -147,6 +152,11 @@ if __name__ == '__main__':
         '--descriptor_only', type=bool, default=True,
         help='Superpoint descriptor only + NN matcher.')
 
+    # V-T&R parameters
+    parser.add_argument('--maxVerticalDifference', type=int, default=1000)
+    parser.add_argument('--numBins', type=int, default=41)
+    parser.add_argument('--granlarity', type=int, default=20)
+
     opt = parser.parse_args()
     print(opt)
 
@@ -155,6 +165,28 @@ if __name__ == '__main__':
     assert not (opt.fast_viz and not opt.viz), 'Must use --viz with --fast_viz'
     assert not (opt.fast_viz and opt.viz_extension == 'pdf'), 'Cannot use pdf extension with --fast_viz'
 
+
+    def building_histogram(kpts0, kpts1):
+        # histogram = np.zeros(self.args.numBins, dtype=int)
+        differenceX = kpts0[:, 0] - kpts1[:, 0]
+        differenceY = kpts0[:, 1] - kpts1[:, 1]
+        invaild = abs(differenceY) > opt.maxVerticalDifference
+
+        differences = differenceX
+        differences[invaild] = -1000000
+
+        index = (differenceX + opt.granlarity / 2) / opt.granlarity + opt.numBins / 2
+        index = index[~invaild]
+        # unique_index, counts_index = np.unique(index, return_counts=True)
+        span = (opt.numBins * opt.granlarity) / 2
+        histogram, bin_edges = np.histogram(differences, bins=opt.numBins, range=(-span, span))
+        max_bin = np.argmax(histogram)
+        edges_left = bin_edges[max_bin]
+        edges_right = bin_edges[max_bin + 1]
+        diffX = differenceX[np.logical_and(differences > edges_left, differences < edges_right)]
+        offset = np.mean(diffX)
+
+        return differences, offset
 
     def match_descriptors(kp1, desc1, kp2, desc2, keep=0.5):
         # Match the keypoints with the warped_keypoints with nearest neighbor search
@@ -204,6 +236,7 @@ if __name__ == '__main__':
     print('Running inference on device \"{}\"'.format(device))
     config = {
         'superpoint': {
+            'weights': opt.superpoint,
             'nms_radius': opt.nms_radius,
             'keypoint_threshold': opt.keypoint_threshold,
             'max_keypoints': opt.max_keypoints
@@ -229,6 +262,7 @@ if __name__ == '__main__':
         print('Will write visualization images to',
               'directory \"{}\"'.format(output_dir))
 
+    ERROR = []
     timer = AverageTimer(newline=True)
     for i, pair in enumerate(pairs):
         name0, name1 = pair[:2]
@@ -316,7 +350,7 @@ if __name__ == '__main__':
             # Write the matches to disk.
             out_matches = {'keypoints0': kpts0, 'keypoints1': kpts1,
                            'matches': matches, 'match_confidence': conf}
-            np.savez(str(matches_path), **out_matches)
+            # np.savez(str(matches_path), **out_matches)
 
         if opt.descriptor_only is False:
             # Keep the matching keypoints.
@@ -324,6 +358,10 @@ if __name__ == '__main__':
             mkpts0 = kpts0[valid]
             mkpts1 = kpts1[matches[valid]]
             mconf = conf[valid]
+
+        differences, offset = building_histogram(mkpts0, mkpts1)
+        print(offset)
+        ERROR.append(offset)
 
         if do_eval:
             # Estimate the pose and compute the pose error.
@@ -399,6 +437,7 @@ if __name__ == '__main__':
                     'SuperDarkPoint',
                     'Keypoints: {}:{}'.format(len(kpts0), len(kpts1)),
                     'Matches: {}'.format(len(mkpts0)),
+                    'Offset: {}'.format(offset)
                 ]
                 small_text = [
                     'Matcher Nearest Neighbour'
@@ -471,3 +510,6 @@ if __name__ == '__main__':
         print('AUC@5\t AUC@10\t AUC@20\t Prec\t MScore\t')
         print('{:.2f}\t {:.2f}\t {:.2f}\t {:.2f}\t {:.2f}\t'.format(
             aucs[0], aucs[1], aucs[2], prec, ms))
+
+    print(ERROR)
+    print("overall error: "+ str((np.array(ERROR)**2).mean()**0.5))

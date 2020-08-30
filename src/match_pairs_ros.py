@@ -184,26 +184,23 @@ class NN_Matching:
             
             if self.args.descriptor_only is False:
                 text = [
-                    'SuperGlue',
-                    'Keypoints: {}:{}'.format(len(kpts0), len(kpts1)),
-                    'Matches: {}'.format(len(mkpts0)),
+                'SuperGlue',
+                'Keypoints: {}:{}'.format(len(kpts0), len(kpts1)),
+                'Matches: {}'.format(len(mkpts0)),
                 ]
-                if rot0 != 0 or rot1 != 0:
-                    text.append('Rotation: {}:{}'.format(rot0, rot1))
-
+    
                 # Display extra parameter info.
-                k_thresh = matching.superpoint.config['keypoint_threshold']
-                m_thresh = matching.superglue.config['match_threshold']
+                k_thresh = self.matching.superpoint.config['keypoint_threshold']
+                m_thresh = self.matching.superglue.config['match_threshold']
                 small_text = [
                     'Keypoint Threshold: {:.4f}'.format(k_thresh),
                     'Match Threshold: {:.2f}'.format(m_thresh),
-                    'Image Pair: {}:{}'.format(stem0, stem1),
                 ]
             else:
                 text = [
-                    'SuperDarkPoint',
-                    'Keypoints: {}:{}'.format(len(kpts0), len(kpts1)),
-                    'Matches: {}'.format(len(mkpts0)),
+                    #'SuperDarkPoint',
+                    #'Keypoints: {}:{}'.format(len(kpts0), len(kpts1)),
+                    'Num of Matches: {}'.format(len(mkpts0)),
                 ]
                 small_text = [
                     'Matcher Nearest Neighbour'

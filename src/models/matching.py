@@ -42,7 +42,8 @@
 
 import torch
 
-from .superDarkPoint import SuperPoint
+from .superDarkPoint import SuperPoint as SuperDarkPoint
+from .superpoint import SuperPoint
 from .superglue import SuperGlue
 
 
@@ -50,7 +51,10 @@ class Matching(torch.nn.Module):
     """ Image Matching Frontend (SuperPoint + SuperGlue) """
     def __init__(self, config={}, destcriptor_only=False):
         super().__init__()
-        self.superpoint = SuperPoint(config.get('superpoint', {}))
+        if(config.get('superpoint', {}).get('weights')=='dark'):
+            self.superpoint = SuperDarkPoint(config.get('superpoint', {}))
+        else:
+            self.superpoint = SuperPoint(config.get('superpoint', {}))
 
         if destcriptor_only is not True:
             self.superglue = SuperGlue(config.get('superglue', {}))
