@@ -72,7 +72,7 @@ class NN_Matching:
         parser = argparse.ArgumentParser(description='Image pair matching and pose evaluation with SuperGlue', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
         # SuperPoint & SuperGlue parameters
         parser.add_argument('--input_pairs', type=str, default='assets/scannet_sample_pairs_with_gt.txt', help='Path to the list of image pairs')
-        parser.add_argument('--resize', type=int, default=[468, 200], help='Resize the input image before running inference. If -1, do not resize')
+        parser.add_argument('--resize', type=int, default=[440, 300], help='Resize the input image before running inference. If -1, do not resize')
         parser.add_argument('--superglue', choices={'indoor', 'outdoor'}, default='outdoor', help='SuperGlue weights')
         parser.add_argument('--max_keypoints', type=int, default=500, help='Maximum number of keypoints detected by Superpoint, -1 keeps all keypoints)')
         parser.add_argument('--keypoint_threshold', type=float, default=0.005, help='SuperPoint keypoint detector confidence threshold')
@@ -83,11 +83,13 @@ class NN_Matching:
         parser.add_argument('--viz_extension', type=str, default='png', choices=['png', 'pdf'], help='Visualization file extension. Use pdf for highest-quality.')
         parser.add_argument('--force_cpu', default=False, help='Force pytorch to run in CPU mode.')
         parser.add_argument('--descriptor_only', type=bool, default=True, help='Superpoint descriptor only + NN matcher.')
-        parser.add_argument('--mask', type=float, default=0.6, help='Create a mask to get ride of ground.')
+        parser.add_argument('--superpoint', choices={'official', 'dark'}, default='official', help='SuperPoint weights')
+        parser.add_argument('--mask', type=float, default=0.75, help='Create a mask to get ride of ground.')
         # V-T&R parameters
         parser.add_argument('--maxVerticalDifference', type=int, default=10)
-        parser.add_argument('--numBins', type=int, default=41)
+        parser.add_argument('--numBins', type=int, default=41) # 73
         parser.add_argument('--granlarity', type=int, default=20)
+        parser.add_argument('--panorama', type=bool, default=False, help='use fisheye camera.') # [720, 180]
 
         self.args = parser.parse_args()
         print(self.args)
@@ -99,6 +101,7 @@ class NN_Matching:
         print('Running inference on device \"{}\"'.format(self.device))
         config = {
             'superpoint': {
+                'weights': self.args.superpoint,
                 'nms_radius': self.args.nms_radius,
                 'keypoint_threshold': self.args.keypoint_threshold,
                 'max_keypoints': self.args.max_keypoints
@@ -124,6 +127,10 @@ class NN_Matching:
         differenceY = kpts0[:, 1] - kpts1[:, 1]
         invaild = abs(differenceY) > self.args.maxVerticalDifference
 
+        if self.args.panorama is True:
+            differenceX[np.nonzero(differenceX>0.5*self.args.resize[0])] -= self.args.resize[0]
+            differenceX[np.nonzero(differenceX<-0.5*self.args.resize[0])] += self.args.resize[0]
+
         differences = differenceX
         differences[invaild] = -1000000
 
@@ -145,8 +152,13 @@ class NN_Matching:
 
         if(self.args.mask < 1.0):
             num_row = int(cv_img_map.shape[0]*self.args.mask)
-            cv_img_map = cv_img_map[:num_row, :]
-            cv_img_camera = cv_img_camera[:num_row, :]
+            
+            if self.args.panorama:
+                cv_img_map = cv_img_map[-num_row:, :]
+                cv_img_camera = cv_img_camera[-num_row:, :]
+            else:
+                cv_img_map = cv_img_map[:num_row, :]
+                cv_img_camera = cv_img_camera[:num_row, :]
 
         image0, inp0, scales0 = image2tensor(cv_img_map, self.device, self.args.resize, False)
         image1, inp1, scales1 = image2tensor(cv_img_camera, self.device, self.args.resize, False)

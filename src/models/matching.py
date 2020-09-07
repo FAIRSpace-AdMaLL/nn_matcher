@@ -52,8 +52,10 @@ class Matching(torch.nn.Module):
     def __init__(self, config={}, destcriptor_only=False):
         super().__init__()
         if(config.get('superpoint', {}).get('weights')=='dark'):
+            print("load DarkPoint model")
             self.superpoint = SuperDarkPoint(config.get('superpoint', {}))
         else:
+            print("load offical SuperPoint model")
             self.superpoint = SuperPoint(config.get('superpoint', {}))
 
         if destcriptor_only is not True:
