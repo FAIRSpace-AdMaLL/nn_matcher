@@ -53,6 +53,7 @@ import torch
 import sys
 import rospy
 import cv2
+import time
 
 # sys.path.remove('/opt/ros/kinetic/lib/python2.7/dist-packages')
 
@@ -72,7 +73,7 @@ class NN_Matching:
         parser = argparse.ArgumentParser(description='Image pair matching and pose evaluation with SuperGlue', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
         # SuperPoint & SuperGlue parameters
         parser.add_argument('--input_pairs', type=str, default='assets/scannet_sample_pairs_with_gt.txt', help='Path to the list of image pairs')
-        parser.add_argument('--resize', type=int, default=[440, 300], help='Resize the input image before running inference. If -1, do not resize')
+        parser.add_argument('--resize', type=int, default=[720, 180] , help='Resize the input image before running inference. If -1, do not resize')
         parser.add_argument('--superglue', choices={'indoor', 'outdoor'}, default='outdoor', help='SuperGlue weights')
         parser.add_argument('--max_keypoints', type=int, default=500, help='Maximum number of keypoints detected by Superpoint, -1 keeps all keypoints)')
         parser.add_argument('--keypoint_threshold', type=float, default=0.005, help='SuperPoint keypoint detector confidence threshold')
@@ -84,12 +85,12 @@ class NN_Matching:
         parser.add_argument('--force_cpu', default=False, help='Force pytorch to run in CPU mode.')
         parser.add_argument('--descriptor_only', type=bool, default=True, help='Superpoint descriptor only + NN matcher.')
         parser.add_argument('--superpoint', choices={'official', 'dark'}, default='official', help='SuperPoint weights')
-        parser.add_argument('--mask', type=float, default=0.75, help='Create a mask to get ride of ground.')
+        parser.add_argument('--mask', type=float, default=0.65, help='Create a mask to get ride of ground.')
         # V-T&R parameters
         parser.add_argument('--maxVerticalDifference', type=int, default=10)
-        parser.add_argument('--numBins', type=int, default=41) # 73
+        parser.add_argument('--numBins', type=int, default=73) # 73 / 41
         parser.add_argument('--granlarity', type=int, default=20)
-        parser.add_argument('--panorama', type=bool, default=False, help='use fisheye camera.') # [720, 180]
+        parser.add_argument('--panorama', type=bool, default=True, help='use fisheye camera.') # [720, 180]  / [640, 350]
 
         self.args = parser.parse_args()
         print(self.args)
@@ -219,9 +220,10 @@ class NN_Matching:
                 ]
 
             is_saving = False
+            file_name = str(time.time())
             visualization_image = make_matching_plot(
                 image0, image1, kpts0, kpts1, mkpts0, mkpts1, color,
-                text, './current.png', True, True, False, 'Matches', small_text, is_saving)
+                text, file_name+'.png', True, True, False, 'Matches', small_text, is_saving)
 
             visualization_image = bridge.cv2_to_imgmsg(visualization_image, encoding="passthrough")
             self.matched_feats_pub.publish(visualization_image)
