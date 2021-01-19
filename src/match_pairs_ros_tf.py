@@ -55,6 +55,7 @@ import cv2
 import time
 
 import tensorflow as tf 
+from tensorflow.python.client import timeline
 
 # sys.path.remove('/opt/ros/kinetic/lib/python2.7/dist-packages')
 
@@ -92,7 +93,7 @@ class NN_Matching:
         parser.add_argument('--panorama', type=bool, default=False, help='use fisheye camera.') # [720, 180]  / [640, 350]
         # Model Path
         parser.add_argument('--model_path', type=str, default='./tf_models', help='Path to the TF models')
-        parser.add_argument('--model_name', type=str, default='gamma4', help='name of the TF model')
+        parser.add_argument('--model_name', type=str, default='darkpoint_rt', help='name of the TF model')
 
         self.args = parser.parse_args()
         print(self.args)
@@ -103,7 +104,7 @@ class NN_Matching:
         self.load_tf_model()
 
 
-        self.nn_matching_srv = rospy.Service('NN_Image_Matching', NNImageMatching, self.matching_pair)
+        self.nn_matching_srv = rospy.Service('/vtr_lite/nn_matcher', NNImageMatching, self.matching_pair)
         self.matched_feats_pub = rospy.Publisher('/matched_features', Image, queue_size = 1)
 
         print("Ready to localize the robot!")
@@ -116,15 +117,15 @@ class NN_Matching:
         weights_root_dir.mkdir(parents=True, exist_ok=True)
         weights_dir = Path(weights_root_dir, weights_name)
 
-        self.graph = tf.Graph()
-        self.sess = tf.Session(graph=self.graph)
-        tf.saved_model.loader.load(self.sess, [tf.saved_model.tag_constants.SERVING], str(weights_dir))
+        self.graph = tf.compat.v1.Graph()
+        self.sess = tf.compat.v1.Session(graph=self.graph)
+        tf.compat.v1.saved_model.loader.load(self.sess, [tf.compat.v1.saved_model.tag_constants.SERVING], str(weights_dir))
 
         self.input_img_tensor = self.graph.get_tensor_by_name('superpoint/image:0')
         self.output_prob_nms_tensor = self.graph.get_tensor_by_name('superpoint/prob_nms:0')
         self.output_desc_tensors = self.graph.get_tensor_by_name('superpoint/descriptors:0')
         
-        print("DarkPoint model is loaded.")
+        print("DarkPoint model is loaded from {}.".format(weights_dir))
 
 
     def preprocess_image(self, img, img_size):
@@ -187,15 +188,24 @@ class NN_Matching:
         print("preprocessing: "+ str(time.time()-now))
         now = time.time()
 
+        #options = tf.compat.v1.RunOptions(trace_level=tf.compat.v1.RunOptions.FULL_TRACE)
+        #run_metadata = tf.compat.v1.RunMetadata()
+
         out0 = self.sess.run([self.output_prob_nms_tensor, self.output_desc_tensors],
                         feed_dict={self.input_img_tensor: np.expand_dims(img0, 0)})
-
+                        #options=options, run_metadata=run_metadata)
+            
         print("inference 0: "+ str((time.time()-now)))
         now = time.time()
 
+        # Create the Timeline object, and write it to a json file
+        #fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+        #chrome_trace = fetched_timeline.generate_chrome_trace_format()
+        #with open('timeline_01.json', 'w') as f:
+        #    f.write(chrome_trace)
+
         out1 = self.sess.run([self.output_prob_nms_tensor, self.output_desc_tensors],
                         feed_dict={self.input_img_tensor: np.expand_dims(img1, 0)})
-
 
         print("inference 1: "+ str((time.time()-now)))
         now = time.time()
