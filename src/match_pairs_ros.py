@@ -73,7 +73,7 @@ class NN_Matching:
         parser = argparse.ArgumentParser(description='Image pair matching and pose evaluation with SuperGlue', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
         # SuperPoint & SuperGlue parameters
         parser.add_argument('--input_pairs', type=str, default='assets/scannet_sample_pairs_with_gt.txt', help='Path to the list of image pairs')
-        parser.add_argument('--resize', type=int, default=[720, 180] , help='Resize the input image before running inference. If -1, do not resize')
+        parser.add_argument('--resize', type=int, default=[640, 350] , help='Resize the input image before running inference. If -1, do not resize')
         parser.add_argument('--superglue', choices={'indoor', 'outdoor'}, default='outdoor', help='SuperGlue weights')
         parser.add_argument('--max_keypoints', type=int, default=500, help='Maximum number of keypoints detected by Superpoint, -1 keeps all keypoints)')
         parser.add_argument('--keypoint_threshold', type=float, default=0.005, help='SuperPoint keypoint detector confidence threshold')
@@ -88,9 +88,9 @@ class NN_Matching:
         parser.add_argument('--mask', type=float, default=0.65, help='Create a mask to get ride of ground.')
         # V-T&R parameters
         parser.add_argument('--maxVerticalDifference', type=int, default=10)
-        parser.add_argument('--numBins', type=int, default=73) # 73 / 41
+        parser.add_argument('--numBins', type=int, default=41) # 73 / 41
         parser.add_argument('--granlarity', type=int, default=20)
-        parser.add_argument('--panorama', type=bool, default=True, help='use fisheye camera.') # [720, 180]  / [640, 350]
+        parser.add_argument('--panorama', type=bool, default=False, help='use fisheye camera.') # [720, 180]  / [640, 350]
 
         self.args = parser.parse_args()
         print(self.args)
