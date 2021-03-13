@@ -75,7 +75,7 @@ class NN_Matching:
         parser.add_argument('--input_pairs', type=str, default='assets/scannet_sample_pairs_with_gt.txt', help='Path to the list of image pairs')
         parser.add_argument('--resize', type=int, default=[640, 350] , help='Resize the input image before running inference. If -1, do not resize')
         parser.add_argument('--superglue', choices={'indoor', 'outdoor'}, default='outdoor', help='SuperGlue weights')
-        parser.add_argument('--max_keypoints', type=int, default=500, help='Maximum number of keypoints detected by Superpoint, -1 keeps all keypoints)')
+        parser.add_argument('--max_keypoints', type=int, default=200, help='Maximum number of keypoints detected by Superpoint, -1 keeps all keypoints)')
         parser.add_argument('--keypoint_threshold', type=float, default=0.005, help='SuperPoint keypoint detector confidence threshold')
         parser.add_argument('--nms_radius', type=int, default=4, help='SuperPoint Non Maximum Suppression (NMS) radius (Must be positive)')
         parser.add_argument('--sinkhorn_iterations', type=int, default=20, help='Number of Sinkhorn iterations performed by SuperGlue')

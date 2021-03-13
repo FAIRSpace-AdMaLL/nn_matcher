@@ -170,7 +170,7 @@ class SuperPoint(torch.nn.Module): #SuperPointNet_gauss2
         self.bnDb = nn.BatchNorm2d(d1)
         self.output = None  # can we delete it ?
         
-        path = Path(__file__).parent / 'weights/superPointNet_70000_checkpoint.pth.tar'
+        path = Path(__file__).parent / 'weights/superDarkPointNet.pth.tar'
         checkpoint = torch.load(str(path),
                                 map_location=lambda storage, loc: storage)
         self.load_state_dict(checkpoint['model_state_dict'])

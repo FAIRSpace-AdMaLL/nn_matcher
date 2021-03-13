@@ -1,4 +1,5 @@
-*.pth
 *.pyc
 /src/dump_match_pairs
 /src/assets
+*/__pycache__/*
+src/models/__pycache__/*
