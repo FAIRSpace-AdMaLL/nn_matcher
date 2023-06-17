@@ -1,3 +1,4 @@
+float32 image_map_index
 sensor_msgs/Image image_map
 sensor_msgs/Image image_camera
 ---
