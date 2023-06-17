@@ -1,0 +1,5 @@
+sensor_msgs/Image image_stereo
+bool reloadmap
+---
+float32 mapnum
+
